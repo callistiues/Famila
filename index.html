@@ -11,14 +11,10 @@
             color: #ffffff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            /* Allow scrolling horizontally and vertically */
             overflow: auto; 
             min-height: 100vh;
         }
 
-        /* * FIX: The canvas wrapper forces the browser to calculate the max width 
-         * of the tree, preventing the left side from getting cut off off-screen.
-         */
         .canvas-wrapper {
             min-width: max-content;
             padding: 40px;
@@ -27,24 +23,56 @@
             align-items: center;
         }
 
+        /* Sticky Headers & Controls */
+        .sticky-header {
+            position: sticky;
+            left: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 100;
+            background: rgba(18, 18, 18, 0.9);
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
         h1 {
             text-align: center;
             color: #94a3b8;
-            position: sticky;
-            left: 50%;
-            margin-bottom: 20px;
-            z-index: 100;
+            margin: 0 0 10px 0;
         }
 
         #simulation-status {
             text-align: center;
-            position: sticky;
-            left: 50%;
             color: #4ade80;
             font-weight: bold;
-            margin-bottom: 40px;
-            z-index: 100;
+            margin-bottom: 15px;
         }
+
+        #controls {
+            display: flex;
+            gap: 15px;
+        }
+
+        .control-btn {
+            background-color: #1e293b;
+            color: #ffffff;
+            border: 1px solid #475569;
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background-color: #334155;
+            border-color: #94a3b8;
+        }
+
+        .btn-play { border-bottom: 3px solid #4ade80; }
+        .btn-pause { border-bottom: 3px solid #fb923c; }
 
         /* Tree Layout Structure */
         .tree-container {
@@ -71,7 +99,6 @@
             transition: all 0.5s;
         }
 
-        /* Connecting Lines */
         .tree li::before, .tree li::after {
             content: '';
             position: absolute;
@@ -178,7 +205,6 @@
             padding: 3px 0;
         }
 
-        /* Removed hardcoded background, now injected via JS */
         .card-image {
             width: 90%;
             height: 45%;
@@ -215,6 +241,11 @@
         .color-opt-int { color: #a3e635; } 
         .color-pes-ext { color: #fb923c; } 
         .color-pes-int { color: #f472b6; }
+        
+        /* Health Colors */
+        .health-good { color: #4ade80; }
+        .health-bad { color: #fb923c; }
+        .health-worse { color: #f87171; }
 
         /* Overlay Styles */
         .overlay {
@@ -261,8 +292,14 @@
 <body>
 
     <div class="canvas-wrapper">
-        <h1>Generational Dynamics Simulator</h1>
-        <div id="simulation-status">Simulation Active: Generation F0</div>
+        <div class="sticky-header">
+            <h1>Generational Dynamics Simulator</h1>
+            <div id="simulation-status">Simulation Active: Generation F0</div>
+            <div id="controls">
+                <button class="control-btn btn-play" onclick="playSimulation()">▶ Play</button>
+                <button class="control-btn btn-pause" onclick="pauseSimulation()">⏸ Pause</button>
+            </div>
+        </div>
         
         <div class="tree-container" id="tree-container">
             </div>
@@ -277,25 +314,44 @@
     </div>
 
     <script>
-        // Updated Personalities with specific hex codes for the card art
-        // c1 is left color, c2 is right color. For pure traits, they are the same.
         const personalities = [
-            { id: 0, name: "Optimistic", class: "color-opt", c1: "#4ade80", c2: "#4ade80" }, // Green
-            { id: 1, name: "Pessimistic", class: "color-pes", c1: "#f87171", c2: "#f87171" }, // Red
-            { id: 2, name: "Extrovert", class: "color-ext", c1: "#60a5fa", c2: "#60a5fa" }, // Blue
-            { id: 3, name: "Introvert", class: "color-int", c1: "#c084fc", c2: "#c084fc" }, // Purple
-            { id: 4, name: "Opti-Extrovert", class: "color-opt-ext", c1: "#4ade80", c2: "#60a5fa" }, // Green/Blue
-            { id: 5, name: "Opti-Introvert", class: "color-opt-int", c1: "#4ade80", c2: "#c084fc" }, // Green/Purple
-            { id: 6, name: "Pessi-Extrovert", class: "color-pes-ext", c1: "#f87171", c2: "#60a5fa" }, // Red/Blue
-            { id: 7, name: "Pessi-Introvert", class: "color-pes-int", c1: "#f87171", c2: "#c084fc" }  // Red/Purple
+            { id: 0, name: "Optimistic", class: "color-opt", c1: "#4ade80", c2: "#4ade80" },
+            { id: 1, name: "Pessimistic", class: "color-pes", c1: "#f87171", c2: "#f87171" },
+            { id: 2, name: "Extrovert", class: "color-ext", c1: "#60a5fa", c2: "#60a5fa" },
+            { id: 3, name: "Introvert", class: "color-int", c1: "#c084fc", c2: "#c084fc" },
+            { id: 4, name: "Opti-Extrovert", class: "color-opt-ext", c1: "#4ade80", c2: "#60a5fa" },
+            { id: 5, name: "Opti-Introvert", class: "color-opt-int", c1: "#4ade80", c2: "#c084fc" },
+            { id: 6, name: "Pessi-Extrovert", class: "color-pes-ext", c1: "#f87171", c2: "#60a5fa" },
+            { id: 7, name: "Pessi-Introvert", class: "color-pes-int", c1: "#f87171", c2: "#c084fc" }
         ];
 
         let currentGeneration = 0;
         const maxGeneration = 10;
         let simulationTimer;
+        let isPaused = false;
 
         function getRandomPersonality() {
             return personalities[Math.floor(Math.random() * personalities.length)];
+        }
+
+        function getRandomHealth() {
+            const healthOptions = ["Good", "Bad", "Worse"];
+            return healthOptions[Math.floor(Math.random() * healthOptions.length)];
+        }
+
+        function getRandomStat() {
+            return Math.floor(Math.random() * 101); // 0 to 100
+        }
+
+        function generatePersonData(name, gen) {
+            return {
+                name: name,
+                trait: getRandomPersonality(),
+                gen: gen,
+                happiness: getRandomStat(),
+                stress: getRandomStat(),
+                health: getRandomHealth()
+            };
         }
 
         function createCardElement(person, isParent = false) {
@@ -304,12 +360,11 @@
             li.classList.add(`gen-${person.gen}`);
             
             const cardClass = isParent ? 'parent-card' : 'offspring-card';
-            
-            // Dynamic diagonal background split
             const bgStyle = `background: linear-gradient(135deg, ${person.trait.c1} 50%, ${person.trait.c2} 50%);`;
             
+            // Changed to single onclick per user request
             li.innerHTML = `
-                <div class="card ${cardClass}" ondblclick="showIndividualData('${person.name}', '${person.trait.name}', '${person.trait.class}', ${person.gen})">
+                <div class="card ${cardClass}" onclick="showIndividualData('${person.name}', '${person.trait.name}', '${person.trait.class}', ${person.gen}, ${person.happiness}, ${person.stress}, '${person.health}')">
                     <div class="card-banner">${person.name}</div>
                     <div class="card-inner">
                         <div class="card-image" style="${bgStyle}"></div>
@@ -338,8 +393,8 @@
             container.appendChild(familyA);
             container.appendChild(familyB);
 
-            const fA_Founder = { name: "Family A (F0)", trait: getRandomPersonality(), gen: 0 };
-            const fB_Founder = { name: "Family B (F0)", trait: getRandomPersonality(), gen: 0 };
+            const fA_Founder = generatePersonData("Family A (F0)", 0);
+            const fB_Founder = generatePersonData("Family B (F0)", 0);
 
             document.getElementById('root-A').appendChild(createCardElement(fA_Founder, true));
             document.getElementById('root-B').appendChild(createCardElement(fB_Founder, true));
@@ -360,36 +415,56 @@
 
             currentLeaves.forEach(leaf => {
                 const childrenContainer = leaf.querySelector('.children-container');
-                
-                // Generates 1 to 2 offspring to expand the tree naturally
                 const numOffspring = Math.floor(Math.random() * 2) + 1; 
 
                 for(let i=0; i<numOffspring; i++) {
-                    const childData = { 
-                        name: `Child F${currentGeneration}`, 
-                        trait: getRandomPersonality(), 
-                        gen: currentGeneration 
-                    };
+                    const childData = generatePersonData(`Child F${currentGeneration}`, currentGeneration);
                     childrenContainer.appendChild(createCardElement(childData, false));
                 }
             });
             
-            // Auto-scroll slightly down as generation progresses
             window.scrollBy({ top: 100, behavior: 'smooth' });
+        }
+
+        // Pause / Play Logic
+        function pauseSimulation() {
+            if (!isPaused && currentGeneration < maxGeneration) {
+                clearInterval(simulationTimer);
+                isPaused = true;
+                document.getElementById('simulation-status').innerText = `Simulation Paused at F${currentGeneration}`;
+                document.getElementById('simulation-status').style.color = "#fb923c"; // Orange
+            }
+        }
+
+        function playSimulation() {
+            if (isPaused && currentGeneration < maxGeneration) {
+                simulationTimer = setInterval(simulateNextGeneration, 10000);
+                isPaused = false;
+                document.getElementById('simulation-status').innerText = `Simulation Active: Generating F${currentGeneration + 1}...`;
+                document.getElementById('simulation-status').style.color = "#4ade80"; // Green
+            }
         }
 
         // Overlay Logic
         const overlay = document.getElementById('data-overlay');
         
-        function showIndividualData(name, traitName, traitClass, gen) {
+        function showIndividualData(name, traitName, traitClass, gen, happiness, stress, health) {
             document.getElementById('overlay-title').innerText = name;
+            
+            // Assign color class based on health string
+            let healthClass = "health-good";
+            if (health === "Bad") healthClass = "health-bad";
+            if (health === "Worse") healthClass = "health-worse";
+
             document.getElementById('overlay-body').innerHTML = `
                 <div class="data-row"><span>Generation Line:</span> <span>F${gen}</span></div>
                 <div class="data-row">
                     <span>Dominant Trait:</span> 
                     <span class="${traitClass}" style="font-weight:bold">${traitName}</span>
                 </div>
-                <div class="data-row"><span>Genetic ID:</span> <span>#DNA-${Math.floor(Math.random() * 90000)}</span></div>
+                <div class="data-row"><span>Happiness:</span> <span>${happiness}/100</span></div>
+                <div class="data-row"><span>Stress Level:</span> <span>${stress}/100</span></div>
+                <div class="data-row"><span>Health:</span> <span class="${healthClass}" style="font-weight:bold">${health}</span></div>
             `;
             overlay.style.display = 'flex';
         }

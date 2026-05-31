@@ -3,97 +3,222 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Family Dynamics Simulation</title>
+    <title>Generational Dynamics Simulator</title>
     <style>
-        /* Base Theme */
+        /* Base Theme & Canvas */
         body {
-            background-color: #121212; /* Black/Dark Grey */
-            color: #ffffff; /* White font */
+            background-color: #121212;
+            color: #ffffff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 40px;
-            display: flex;
-            justify-content: center;
-            gap: 40px;
-            flex-wrap: wrap;
+            overflow: auto; /* Allows scrolling for massive trees */
+            min-width: 100vw;
+            min-height: 100vh;
         }
 
         h1 {
-            width: 100%;
             text-align: center;
-            color: #94a3b8; /* Light blue-grey */
+            color: #94a3b8;
+            position: sticky;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 40px;
+            z-index: 100;
+        }
+
+        #simulation-status {
+            text-align: center;
+            position: sticky;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #4ade80;
+            font-weight: bold;
             margin-bottom: 40px;
         }
 
-        /* Card Styles */
-        .family-card {
-            background-color: #1e293b; /* Blue-greyish hue */
-            border: 1px solid #334155;
-            border-radius: 12px;
-            padding: 25px;
-            width: 350px;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .family-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-        }
-
-        .family-header {
-            font-size: 1.4rem;
-            font-weight: bold;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #334155;
-            padding-bottom: 10px;
-        }
-
-        .parents-container {
+        /* Tree Layout Structure */
+        .tree-container {
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-        }
-
-        .offspring-container {
-            display: flex;
-            gap: 10px;
             justify-content: center;
-            flex-wrap: wrap;
-            border-top: 1px dashed #475569;
-            padding-top: 15px;
+            gap: 100px;
+            padding-bottom: 100px;
         }
 
-        .individual-card {
-            background-color: #0f172a; /* Darker blue-grey for contrast */
-            border: 1px solid #475569;
-            border-radius: 6px;
-            padding: 10px;
+        .tree ul {
+            padding-top: 20px;
+            position: relative;
+            transition: all 0.5s;
+            display: flex;
+            justify-content: center;
+            padding-left: 0;
+        }
+
+        .tree li {
+            float: left;
             text-align: center;
-            flex: 1;
-            min-width: 80px;
+            list-style-type: none;
+            position: relative;
+            padding: 20px 5px 0 5px;
+            transition: all 0.5s;
+        }
+
+        /* Connecting Lines */
+        .tree li::before, .tree li::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 50%;
+            border-top: 2px solid #5a6b82;
+            width: 50%;
+            height: 20px;
+        }
+
+        .tree li::after {
+            right: auto;
+            left: 50%;
+            border-left: 2px solid #5a6b82;
+        }
+
+        .tree li:only-child::after, .tree li:only-child::before {
+            display: none;
+        }
+
+        .tree li:only-child {
+            padding-top: 0;
+        }
+
+        .tree li:first-child::before, .tree li:last-child::after {
+            border: 0 none;
+        }
+
+        .tree li:first-child::after {
+            border-radius: 5px 0 0 0;
+        }
+
+        .tree li:last-child::before {
+            border-right: 2px solid #5a6b82;
+            border-radius: 0 5px 0 0;
+        }
+
+        .tree ul ul::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            border-left: 2px solid #5a6b82;
+            width: 0;
+            height: 20px;
+        }
+
+        /* Fantasy Card Styling */
+        .card {
+            position: relative;
+            margin: 0 auto;
+            background: #2a2a2a;
+            /* Angled top corners */
+            clip-path: polygon(15% 0, 85% 0, 100% 10%, 100% 100%, 0 100%, 0 10%);
+            padding: 4px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
             cursor: pointer;
+            transition: transform 0.2s;
         }
 
-        .individual-card:hover {
-            border-color: #94a3b8;
+        .card:hover {
+            transform: translateY(-5px);
         }
 
-        .role-label {
-            font-size: 0.8rem;
-            color: #94a3b8;
-            margin-bottom: 5px;
-            text-transform: uppercase;
+        /* Parent Size */
+        .parent-card {
+            width: 180px;
+            height: 260px;
         }
 
-        /* Overlay (Modal) Styles */
+        /* Offspring Size */
+        .offspring-card {
+            width: 130px;
+            height: 190px;
+            margin-top: 10px;
+        }
+
+        .card-inner {
+            background: #334155;
+            width: 100%;
+            height: 100%;
+            clip-path: polygon(15% 0, 85% 0, 100% 10%, 100% 100%, 0 100%, 0 10%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card-banner {
+            position: absolute;
+            top: 12px;
+            left: -5%;
+            width: 110%;
+            background: #a2d2df; /* Light blue banner */
+            color: #1e293b;
+            font-weight: bold;
+            text-align: center;
+            padding: 5px 0;
+            border-radius: 4px;
+            z-index: 2;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+        }
+
+        .offspring-card .card-banner {
+            font-size: 0.7rem;
+            top: 8px;
+            padding: 3px 0;
+        }
+
+        .card-image {
+            background: linear-gradient(135deg, #7a1111, #4a0000);
+            width: 90%;
+            height: 45%;
+            margin-top: 45px;
+            border-radius: 4px;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            border: 2px solid #a2d2df;
+        }
+
+        .offspring-card .card-image {
+            margin-top: 30px;
+            border-width: 1px;
+        }
+
+        .card-text {
+            margin-top: 10px;
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 0 5px;
+        }
+
+        .offspring-card .card-text {
+            font-size: 0.65rem;
+            margin-top: 5px;
+        }
+
+        /* Trait Colors */
+        .color-opt { color: #4ade80; } 
+        .color-pes { color: #f87171; } 
+        .color-ext { color: #60a5fa; } 
+        .color-int { color: #c084fc; } 
+        .color-opt-ext { color: #2dd4bf; } 
+        .color-opt-int { color: #a3e635; } 
+        .color-pes-ext { color: #fb923c; } 
+        .color-pes-int { color: #f472b6; }
+
+        /* Overlay Styles */
         .overlay {
             display: none;
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             background: rgba(0, 0, 0, 0.85);
             z-index: 1000;
             justify-content: center;
@@ -106,7 +231,6 @@
             border-radius: 12px;
             border: 1px solid #475569;
             width: 400px;
-            max-width: 90%;
             position: relative;
         }
 
@@ -119,10 +243,6 @@
             color: #94a3b8;
         }
 
-        .close-btn:hover {
-            color: #ffffff;
-        }
-
         .data-row {
             margin: 15px 0;
             display: flex;
@@ -131,22 +251,14 @@
             padding-bottom: 5px;
         }
 
-        /* Trait Colors (Consistent across randomizations) */
-        .color-opt { color: #4ade80; } /* Optimistic: Green */
-        .color-pes { color: #f87171; } /* Pessimistic: Red */
-        .color-ext { color: #60a5fa; } /* Extrovert: Blue */
-        .color-int { color: #c084fc; } /* Introvert: Purple */
-        .color-opt-ext { color: #2dd4bf; } /* Teal */
-        .color-opt-int { color: #a3e635; } /* Lime */
-        .color-pes-ext { color: #fb923c; } /* Orange */
-        .color-pes-int { color: #f472b6; } /* Pink */
-
     </style>
 </head>
 <body>
 
     <h1>Generational Dynamics Simulator</h1>
-    <div id="simulation-container" style="display: flex; gap: 40px; flex-wrap: wrap; width: 100%; justify-content: center;">
+    <div id="simulation-status">Simulation Active: Generation F0</div>
+    
+    <div class="tree-container" id="tree-container">
         </div>
 
     <div id="data-overlay" class="overlay">
@@ -158,136 +270,113 @@
     </div>
 
     <script>
-        // 1. The 8 Personality Types Database
         const personalities = [
             { id: 0, name: "Optimistic", class: "color-opt" },
             { id: 1, name: "Pessimistic", class: "color-pes" },
             { id: 2, name: "Extrovert", class: "color-ext" },
             { id: 3, name: "Introvert", class: "color-int" },
-            { id: 4, name: "Optimistic-Extrovert", class: "color-opt-ext" },
-            { id: 5, name: "Optimistic-Introvert", class: "color-opt-int" },
-            { id: 6, name: "Pessimistic-Extrovert", class: "color-pes-ext" },
-            { id: 7, name: "Pessimistic-Introvert", class: "color-pes-int" }
+            { id: 4, name: "Opti-Extrovert", class: "color-opt-ext" },
+            { id: 5, name: "Opti-Introvert", class: "color-opt-int" },
+            { id: 6, name: "Pessi-Extrovert", class: "color-pes-ext" },
+            { id: 7, name: "Pessi-Introvert", class: "color-pes-int" }
         ];
 
-        // 2. Helper Functions
+        let currentGeneration = 0;
+        const maxGeneration = 10;
+        let simulationTimer;
+
         function getRandomPersonality() {
-            const randomIndex = Math.floor(Math.random() * personalities.length);
-            return personalities[randomIndex];
+            return personalities[Math.floor(Math.random() * personalities.length)];
         }
 
-        function getRandomInt(min, max) {
-            return Math.floor(Math.random() * (max - min + 1)) + min;
+        function createCardElement(person, isParent = false) {
+            const li = document.createElement('li');
+            li.setAttribute('data-generation', person.gen);
+            li.classList.add(`gen-${person.gen}`);
+            
+            const cardClass = isParent ? 'parent-card' : 'offspring-card';
+            
+            li.innerHTML = `
+                <div class="card ${cardClass}" ondblclick="showIndividualData('${person.name}', '${person.trait.name}', '${person.trait.class}', ${person.gen})">
+                    <div class="card-banner">${person.name}</div>
+                    <div class="card-inner">
+                        <div class="card-image"></div>
+                        <div class="card-text">
+                            <span style="color:#94a3b8">Trait:</span><br>
+                            <b class="${person.trait.class}">${person.trait.name}</b>
+                        </div>
+                    </div>
+                </div>
+                <ul class="children-container"></ul>
+            `;
+            return li;
         }
 
-        // 3. Generate Initial Data
-        const families = [
-            {
-                id: "Family A",
-                stressLevel: getRandomInt(10, 90),
-                freenessLevel: getRandomInt(10, 90),
-                dynamicsScore: getRandomInt(10, 90),
-                members: {
-                    parent1: { name: "Parent 1", trait: getRandomPersonality(), age: 45 },
-                    parent2: { name: "Parent 2", trait: getRandomPersonality(), age: 43 },
-                    offspring: [
-                        { name: "Child 1", trait: getRandomPersonality(), age: 18 },
-                        { name: "Child 2", trait: getRandomPersonality(), age: 15 }
-                    ]
-                }
-            },
-            {
-                id: "Family B",
-                stressLevel: getRandomInt(10, 90),
-                freenessLevel: getRandomInt(10, 90),
-                dynamicsScore: getRandomInt(10, 90),
-                members: {
-                    parent1: { name: "Parent 1", trait: getRandomPersonality(), age: 50 },
-                    parent2: { name: "Parent 2", trait: getRandomPersonality(), age: 48 },
-                    offspring: [
-                        { name: "Child 1", trait: getRandomPersonality(), age: 22 }
-                    ]
-                }
+        function initializeFamilies() {
+            const container = document.getElementById('tree-container');
+            
+            const familyA = document.createElement('div');
+            familyA.className = 'tree';
+            familyA.innerHTML = '<ul id="root-A"></ul>';
+            
+            const familyB = document.createElement('div');
+            familyB.className = 'tree';
+            familyB.innerHTML = '<ul id="root-B"></ul>';
+
+            container.appendChild(familyA);
+            container.appendChild(familyB);
+
+            // Create F0 Founders
+            const fA_Founder = { name: "Family A (F0)", trait: getRandomPersonality(), gen: 0 };
+            const fB_Founder = { name: "Family B (F0)", trait: getRandomPersonality(), gen: 0 };
+
+            document.getElementById('root-A').appendChild(createCardElement(fA_Founder, true));
+            document.getElementById('root-B').appendChild(createCardElement(fB_Founder, true));
+        }
+
+        function simulateNextGeneration() {
+            if (currentGeneration >= maxGeneration) {
+                clearInterval(simulationTimer);
+                document.getElementById('simulation-status').innerText = "Simulation Complete: Reached F10";
+                document.getElementById('simulation-status').style.color = "#f87171";
+                return;
             }
-        ];
 
-        // 4. Render Families to the DOM
-        const container = document.getElementById('simulation-container');
-
-        families.forEach((family, index) => {
-            // Create Family Card
-            const famCard = document.createElement('div');
-            famCard.className = 'family-card';
-            famCard.onclick = () => showFamilyData(family);
-
-            // Family Header
-            famCard.innerHTML = `<div class="family-header">${family.id}</div>`;
-
-            // Parents Container
-            const parentsDiv = document.createElement('div');
-            parentsDiv.className = 'parents-container';
+            // Find all nodes of the CURRENT lowest generation
+            const currentLeaves = document.querySelectorAll(`.gen-${currentGeneration}`);
             
-            [family.members.parent1, family.members.parent2].forEach(parent => {
-                parentsDiv.appendChild(createIndividualCard(parent, 'Parent'));
+            currentGeneration++;
+            document.getElementById('simulation-status').innerText = `Simulation Active: Generating F${currentGeneration}...`;
+
+            currentLeaves.forEach(leaf => {
+                const childrenContainer = leaf.querySelector('.children-container');
+                
+                // Give 1 to 2 offspring to create a branching effect
+                const numOffspring = Math.floor(Math.random() * 2) + 1; 
+
+                for(let i=0; i<numOffspring; i++) {
+                    const childData = { 
+                        name: `Child F${currentGeneration}`, 
+                        trait: getRandomPersonality(), 
+                        gen: currentGeneration 
+                    };
+                    childrenContainer.appendChild(createCardElement(childData, false));
+                }
             });
-            famCard.appendChild(parentsDiv);
-
-            // Offspring Container
-            const offspringDiv = document.createElement('div');
-            offspringDiv.className = 'offspring-container';
-            
-            family.members.offspring.forEach(child => {
-                offspringDiv.appendChild(createIndividualCard(child, 'Offspring'));
-            });
-            famCard.appendChild(offspringDiv);
-
-            container.appendChild(famCard);
-        });
-
-        function createIndividualCard(person, role) {
-            const card = document.createElement('div');
-            card.className = 'individual-card';
-            
-            // Stop single click from triggering the family card overlay
-            card.onclick = (e) => e.stopPropagation(); 
-            // Double click triggers individual data overlay
-            card.ondblclick = (e) => {
-                e.stopPropagation();
-                showIndividualData(person, role);
-            };
-
-            card.innerHTML = `
-                <div class="role-label">${role}</div>
-                <div>${person.name}</div>
-                <div class="${person.trait.class}" style="font-size: 0.8rem; margin-top: 5px;">${person.trait.name}</div>
-            `;
-            return card;
         }
 
-        // 5. Overlay Logic
+        // Overlay Logic
         const overlay = document.getElementById('data-overlay');
-        const overlayTitle = document.getElementById('overlay-title');
-        const overlayBody = document.getElementById('overlay-body');
-
-        function showFamilyData(family) {
-            overlayTitle.innerText = `${family.id} Dynamics`;
-            overlayBody.innerHTML = `
-                <div class="data-row"><span>Household Stress:</span> <span>${family.stressLevel}%</span></div>
-                <div class="data-row"><span>Freeness/Autonomy:</span> <span>${family.freenessLevel}%</span></div>
-                <div class="data-row"><span>Overall Dynamics Score:</span> <span>${family.dynamicsScore}/100</span></div>
-            `;
-            overlay.style.display = 'flex';
-        }
-
-        function showIndividualData(person, role) {
-            overlayTitle.innerText = `${person.name} (${role})`;
-            overlayBody.innerHTML = `
-                <div class="data-row"><span>Age:</span> <span>${person.age}</span></div>
+        
+        function showIndividualData(name, traitName, traitClass, gen) {
+            document.getElementById('overlay-title').innerText = name;
+            document.getElementById('overlay-body').innerHTML = `
+                <div class="data-row"><span>Generation Line:</span> <span>F${gen}</span></div>
                 <div class="data-row">
                     <span>Dominant Trait:</span> 
-                    <span class="${person.trait.class} font-weight-bold">${person.trait.name}</span>
+                    <span class="${traitClass}" style="font-weight:bold">${traitName}</span>
                 </div>
-                <div class="data-row"><span>Genetic ID:</span> <span>#Gen${Math.floor(Math.random() * 9000) + 1000}</span></div>
+                <div class="data-row"><span>Genetic ID:</span> <span>#DNA-${Math.floor(Math.random() * 90000)}</span></div>
             `;
             overlay.style.display = 'flex';
         }
@@ -296,13 +385,16 @@
             overlay.style.display = 'none';
         }
 
-        // Close overlay if user clicks outside the box
         window.onclick = function(event) {
-            if (event.target == overlay) {
-                closeOverlay();
-            }
+            if (event.target == overlay) closeOverlay();
         }
+
+        // Start Simulation
+        initializeFamilies();
+        // Run interval every 10,000 ms (10 seconds)
+        simulationTimer = setInterval(simulateNextGeneration, 10000);
+
     </script>
 </body>
-  </html>
+</html>
 

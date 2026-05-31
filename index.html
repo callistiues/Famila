@@ -11,10 +11,20 @@
             color: #ffffff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 40px;
-            overflow: auto; /* Allows scrolling for massive trees */
-            min-width: 100vw;
+            /* Allow scrolling horizontally and vertically */
+            overflow: auto; 
             min-height: 100vh;
+        }
+
+        /* * FIX: The canvas wrapper forces the browser to calculate the max width 
+         * of the tree, preventing the left side from getting cut off off-screen.
+         */
+        .canvas-wrapper {
+            min-width: max-content;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         h1 {
@@ -22,8 +32,7 @@
             color: #94a3b8;
             position: sticky;
             left: 50%;
-            transform: translateX(-50%);
-            margin-bottom: 40px;
+            margin-bottom: 20px;
             z-index: 100;
         }
 
@@ -31,17 +40,16 @@
             text-align: center;
             position: sticky;
             left: 50%;
-            transform: translateX(-50%);
             color: #4ade80;
             font-weight: bold;
             margin-bottom: 40px;
+            z-index: 100;
         }
 
         /* Tree Layout Structure */
         .tree-container {
             display: flex;
-            justify-content: center;
-            gap: 100px;
+            gap: 150px;
             padding-bottom: 100px;
         }
 
@@ -116,7 +124,6 @@
             position: relative;
             margin: 0 auto;
             background: #2a2a2a;
-            /* Angled top corners */
             clip-path: polygon(15% 0, 85% 0, 100% 10%, 100% 100%, 0 100%, 0 10%);
             padding: 4px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.5);
@@ -128,13 +135,11 @@
             transform: translateY(-5px);
         }
 
-        /* Parent Size */
         .parent-card {
             width: 180px;
             height: 260px;
         }
 
-        /* Offspring Size */
         .offspring-card {
             width: 130px;
             height: 190px;
@@ -156,7 +161,7 @@
             top: 12px;
             left: -5%;
             width: 110%;
-            background: #a2d2df; /* Light blue banner */
+            background: #a2d2df;
             color: #1e293b;
             font-weight: bold;
             text-align: center;
@@ -173,8 +178,8 @@
             padding: 3px 0;
         }
 
+        /* Removed hardcoded background, now injected via JS */
         .card-image {
-            background: linear-gradient(135deg, #7a1111, #4a0000);
             width: 90%;
             height: 45%;
             margin-top: 45px;
@@ -201,7 +206,7 @@
             margin-top: 5px;
         }
 
-        /* Trait Colors */
+        /* Trait Font Colors */
         .color-opt { color: #4ade80; } 
         .color-pes { color: #f87171; } 
         .color-ext { color: #60a5fa; } 
@@ -255,11 +260,13 @@
 </head>
 <body>
 
-    <h1>Generational Dynamics Simulator</h1>
-    <div id="simulation-status">Simulation Active: Generation F0</div>
-    
-    <div class="tree-container" id="tree-container">
-        </div>
+    <div class="canvas-wrapper">
+        <h1>Generational Dynamics Simulator</h1>
+        <div id="simulation-status">Simulation Active: Generation F0</div>
+        
+        <div class="tree-container" id="tree-container">
+            </div>
+    </div>
 
     <div id="data-overlay" class="overlay">
         <div class="overlay-content">
@@ -270,15 +277,17 @@
     </div>
 
     <script>
+        // Updated Personalities with specific hex codes for the card art
+        // c1 is left color, c2 is right color. For pure traits, they are the same.
         const personalities = [
-            { id: 0, name: "Optimistic", class: "color-opt" },
-            { id: 1, name: "Pessimistic", class: "color-pes" },
-            { id: 2, name: "Extrovert", class: "color-ext" },
-            { id: 3, name: "Introvert", class: "color-int" },
-            { id: 4, name: "Opti-Extrovert", class: "color-opt-ext" },
-            { id: 5, name: "Opti-Introvert", class: "color-opt-int" },
-            { id: 6, name: "Pessi-Extrovert", class: "color-pes-ext" },
-            { id: 7, name: "Pessi-Introvert", class: "color-pes-int" }
+            { id: 0, name: "Optimistic", class: "color-opt", c1: "#4ade80", c2: "#4ade80" }, // Green
+            { id: 1, name: "Pessimistic", class: "color-pes", c1: "#f87171", c2: "#f87171" }, // Red
+            { id: 2, name: "Extrovert", class: "color-ext", c1: "#60a5fa", c2: "#60a5fa" }, // Blue
+            { id: 3, name: "Introvert", class: "color-int", c1: "#c084fc", c2: "#c084fc" }, // Purple
+            { id: 4, name: "Opti-Extrovert", class: "color-opt-ext", c1: "#4ade80", c2: "#60a5fa" }, // Green/Blue
+            { id: 5, name: "Opti-Introvert", class: "color-opt-int", c1: "#4ade80", c2: "#c084fc" }, // Green/Purple
+            { id: 6, name: "Pessi-Extrovert", class: "color-pes-ext", c1: "#f87171", c2: "#60a5fa" }, // Red/Blue
+            { id: 7, name: "Pessi-Introvert", class: "color-pes-int", c1: "#f87171", c2: "#c084fc" }  // Red/Purple
         ];
 
         let currentGeneration = 0;
@@ -296,11 +305,14 @@
             
             const cardClass = isParent ? 'parent-card' : 'offspring-card';
             
+            // Dynamic diagonal background split
+            const bgStyle = `background: linear-gradient(135deg, ${person.trait.c1} 50%, ${person.trait.c2} 50%);`;
+            
             li.innerHTML = `
                 <div class="card ${cardClass}" ondblclick="showIndividualData('${person.name}', '${person.trait.name}', '${person.trait.class}', ${person.gen})">
                     <div class="card-banner">${person.name}</div>
                     <div class="card-inner">
-                        <div class="card-image"></div>
+                        <div class="card-image" style="${bgStyle}"></div>
                         <div class="card-text">
                             <span style="color:#94a3b8">Trait:</span><br>
                             <b class="${person.trait.class}">${person.trait.name}</b>
@@ -326,7 +338,6 @@
             container.appendChild(familyA);
             container.appendChild(familyB);
 
-            // Create F0 Founders
             const fA_Founder = { name: "Family A (F0)", trait: getRandomPersonality(), gen: 0 };
             const fB_Founder = { name: "Family B (F0)", trait: getRandomPersonality(), gen: 0 };
 
@@ -342,7 +353,6 @@
                 return;
             }
 
-            // Find all nodes of the CURRENT lowest generation
             const currentLeaves = document.querySelectorAll(`.gen-${currentGeneration}`);
             
             currentGeneration++;
@@ -351,7 +361,7 @@
             currentLeaves.forEach(leaf => {
                 const childrenContainer = leaf.querySelector('.children-container');
                 
-                // Give 1 to 2 offspring to create a branching effect
+                // Generates 1 to 2 offspring to expand the tree naturally
                 const numOffspring = Math.floor(Math.random() * 2) + 1; 
 
                 for(let i=0; i<numOffspring; i++) {
@@ -363,6 +373,9 @@
                     childrenContainer.appendChild(createCardElement(childData, false));
                 }
             });
+            
+            // Auto-scroll slightly down as generation progresses
+            window.scrollBy({ top: 100, behavior: 'smooth' });
         }
 
         // Overlay Logic
@@ -391,10 +404,8 @@
 
         // Start Simulation
         initializeFamilies();
-        // Run interval every 10,000 ms (10 seconds)
         simulationTimer = setInterval(simulateNextGeneration, 10000);
 
     </script>
 </body>
 </html>
-
